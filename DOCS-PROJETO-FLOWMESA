@@ -1,0 +1,264 @@
+# DOCS-PROJETO-FLOWMESA
+
+## 1. Visão geral
+
+O FlowMesa é um sistema SaaS para operações de alimentação (food trucks, restaurantes, bares), com foco em:
+
+- Atendimento automático via WhatsApp.
+- Captação e gestão de pedidos (WhatsApp e balcão).
+- Controle de preparo, impressão de comandas e senhas.
+- Caixa, pagamentos e relatórios básicos.
+- Controle simplificado de estoque.
+- Painel administrativo para gestão da operação.
+
+O projeto piloto é o food truck **Trilha do Sabor**, operando em Bertioga (Foodpark Morada da Praia). Toda a arquitetura é pensada para:
+
+- Atender bem o Trilha do Sabor.
+- Permitir replicação futura em modelo multiempresa (SaaS, planos Base/Pro/Premium).
+
+Este documento descreve o estado atual do sistema, a arquitetura implementada e as principais decisões técnicas.
+
+---
+
+## 2. Arquitetura em alto nível
+
+A arquitetura do FlowMesa segue quatro camadas principais:
+
+1. **Entrada**  
+   - WhatsApp (via Evolution API).
+   - PDV de balcão (web).
+   - Painel administrativo (web).
+
+2. **Orquestração**  
+   - n8n para automações de:
+     - atendimento WhatsApp;
+     - criação/atualização de pedidos;
+     - disparo de notificações;
+     - integração com impressão.
+
+3. **Negócio / Persistência**  
+   - Supabase (Postgres) como banco principal.
+   - API backend (flowmesa-api ou equivalente), responsável por:
+     - expor rotas REST para o front-end e n8n;
+     - aplicar regras de negócio;
+     - interagir com as tabelas do Supabase.
+
+4. **Execução física**  
+   - Impressoras térmicas para cozinha/produção.
+   - Impressão de senhas e comandas por setor.
+   - (Futuro) monitores/painéis de produção.
+
+---
+
+## 3. Escopo do projeto piloto (Trilha do Sabor)
+
+### 3.1 Objetivo do piloto
+
+Colocar em produção, para o Trilha do Sabor, um sistema que permita:
+
+- Atender clientes pelo WhatsApp com fluxo guiado.
+- Registrar pedidos e vincular a clientes.
+- Gerar comandas/senhas para produção.
+- Registrar pagamentos e controlar o caixa diário.
+- Ter visão mínima de estoque e vendas.
+
+Tudo isso operando em uma arquitetura que suporte, no futuro, múltiplas empresas/lojas.
+
+### 3.2 Módulos incluídos no MVP
+
+**Plataforma**
+
+- Empresas (multiempresa preparado, com uma empresa ativa: Trilha do Sabor).
+- Usuários e permissões básicas.
+
+**Comunicação**
+
+- Integração WhatsApp via Evolution API.
+- Registro de conversas no Supabase.
+
+**Operação e Venda**
+
+- Cadastro de produtos e categorias.
+- Pedidos (WhatsApp e, futuramente, balcão).
+- Geração de senhas de retirada.
+
+**Cozinha / Execução**
+
+- Cadastro de setores (ex.: churrasco).
+- Impressão de comandas/senhas por setor.
+
+**Financeiro**
+
+- Pagamentos (registro de meio de pagamento).
+- Caixa (abertura/fechamento e relatório básico).
+
+**Estoque**
+
+- Itens de estoque e movimentações básicas.
+
+**Automação**
+
+- Fluxo principal de atendimento via n8n:
+  - entrada de mensagem;
+  - identificação de cliente/conversa;
+  - montagem de pedido;
+  - gravação no Supabase;
+  - disparo de impressão.
+
+---
+
+## 4. Infraestrutura atual
+
+**Servidor**
+
+- VPS Contabo, Ubuntu.
+- 75 GB de disco, 4 vCPUs, 8 GB RAM.
+
+**Ferramentas base**
+
+- Docker e Docker Compose.
+- Supabase (instância externa).
+- n8n.
+- Evolution API (WhatsApp).
+- GitHub para versionamento.
+
+> Importante: já existe outra implementação rodando na VPS.  
+> O FlowMesa/Trilha não pode interromper, sobrescrever ou derrubar o que já está em produção.  
+> A convivência será feita com:
+> - redes Docker separadas,
+> - nomes de containers distintos,
+> - portas diferentes,
+> - volumes organizados por stack.
+
+Nesta fase inicial, os detalhes exatos de containers, redes e portas serão descritos na seção 6, assim que forem definidos e implementados.
+
+---
+
+## 5. Banco de dados (Supabase)
+
+O Supabase (schema `public`) já contém as seguintes tabelas relevantes para o projeto:
+
+- `caixas`
+- `categorias`
+- `clientes`
+- `conversas`
+- `empresas`
+- `estoque_itens`
+- `fila_impressao`
+- `impressoras`
+- `movimentacoes_...` (tabelas de movimentações)
+- `pagamentos`
+- `pedido_itens`
+- `pedidos`
+- `produtos`
+- `senhas`
+- `setores`
+- `usuarios`
+
+A tabela `public.empresas` já existe e não deve ser recriada.  
+Sempre que novas necessidades surgirem, o padrão será:
+
+- Utilizar `ALTER TABLE` para ajustes em tabelas existentes.
+- Criar novas tabelas apenas quando realmente necessário.
+- Evitar recriação de tabelas já existentes.
+
+Quando o esquema detalhado de cada tabela estiver fixado, será documentado aqui em subtópicos, por exemplo:
+
+- `clientes`  
+  - colunas, tipos, chaves, relações.
+
+---
+
+## 6. Serviços/containers do projeto
+
+> Esta seção será atualizada conforme os serviços forem sendo criados na VPS.
+
+Planejado para o projeto FlowMesa / Trilha do Sabor:
+
+- `flowmesa-api`  
+  - Função: backend principal (rotas REST, lógica de negócio, acesso ao Supabase).  
+  - Porta interna: a definir.  
+  - Rede Docker: específica da stack FlowMesa.
+
+- `flowmesa-n8n`  
+  - Função: orquestração de automações (WhatsApp, pedidos, impressão).  
+  - Porta interna: a definir.  
+  - Subdomínio sugerido: `n8n.suadominio.com` ou equivalente.
+
+- `flowmesa-evolution`  
+  - Função: integração com WhatsApp (Evolution API).  
+  - Porta interna: a definir.  
+  - Dependências: acesso aos servidores do WhatsApp, volumes para sessões.
+
+- Outros serviços futuros  
+  - Painel web (frontend).
+  - Serviços auxiliares (ex: servidor de impressão).
+
+Cada serviço terá:
+
+- Nome do container.
+- Porta interna/externa.
+- Rede Docker.
+- Volumes.
+- Variáveis de ambiente importantes.
+
+---
+
+## 7. Fluxos principais
+
+### 7.1 Fluxo de atendimento via WhatsApp
+
+Resumo do fluxo:
+
+1. Cliente envia mensagem para o número do Trilha do Sabor no WhatsApp.
+2. Evolution API recebe a mensagem e gera evento.
+3. n8n consome o evento, identifica cliente/conversa e contexto.
+4. n8n consulta o Supabase (clientes, conversas, pedidos).
+5. n8n responde com mensagem estruturada (saudação, menu, etc.).
+6. Cliente monta o pedido via WhatsApp (itens e quantidades).
+7. n8n registra o pedido no Supabase (tabelas `pedidos` e `pedido_itens`).
+8. n8n cria registros na fila de impressão (`fila_impressao`) por setor.
+9. Impressoras/serviços de impressão consomem a fila e geram comandas/senhas.
+10. Operação atualiza status do pedido (em preparo, pronto, entregue).
+11. Pagamento é registrado e o pedido é fechado.
+
+Este fluxo será detalhado em documento específico (`whatsapp-flow.md`) e referenciado aqui.
+
+### 7.2 Fluxos operacionais adicionais
+
+- PDV de balcão (pedido presencial).
+- Fechamento de caixa diário.
+- Ajustes de estoque.
+
+Serão detalhados conforme forem implementados.
+
+---
+
+## 8. Decisões importantes de arquitetura
+
+- **Multiempresa desde o início:**  
+  Toda modelagem de dados e lógica considera ligação com `empresas`, mesmo que inicialmente apenas o Trilha do Sabor esteja em uso.
+
+- **Supabase como fonte de verdade dos dados:**  
+  Todas as entidades de negócio principais residem no Supabase. Outros serviços interagem via API ou diretamente (conforme definido), mas o banco central é único.
+
+- **Orquestração via n8n:**  
+  Integrações de WhatsApp, automações de fluxo de pedidos e disparos de impressão são feitos via n8n, não diretamente no backend.
+
+- **Convivência na VPS:**  
+  Nenhum novo container ou serviço do FlowMesa deve utilizar as mesmas portas, nomes de container ou volumes de serviços já em produção.
+
+Esta seção será expandida conforme novas decisões forem tomadas (ex.: padrão de autenticação, abordagem de multi-tenant, etc.).
+
+---
+
+## 9. Próximos passos planejados
+
+1. Mapear e documentar o estado atual da VPS (containers, redes, portas).
+2. Definir e subir a stack mínima para:
+   - Evolution API (WhatsApp).
+   - n8n dedicado ao FlowMesa.
+   - Backend (flowmesa-api) apontando para o Supabase.
+3. Detalhar o esquema das tabelas principais no Supabase.
+4. Implementar o fluxo de atendimento WhatsApp para o Trilha do Sabor.
+5. Subir o primeiro painel de operação (listagem de pedidos, controle básico).
