@@ -136,7 +136,15 @@ Nesta fase inicial, os detalhes exatos de containers, redes e portas serão desc
 
 ## 5. Banco de dados (Supabase)
 
-O Supabase (schema `public`) já contém as seguintes tabelas relevantes para o projeto:
+O FlowMesa utiliza Supabase como banco de dados principal (Postgres gerenciado).
+
+Projeto Supabase em uso:
+
+- Nome do projeto: Flowmesa
+- URL do projeto (API): `https://mokpkbjfzzikdajjqylv.supabase.co`
+- Schema principal: `public`
+
+As tabelas já criadas incluem:
 
 - `caixas`
 - `categorias`
@@ -146,7 +154,7 @@ O Supabase (schema `public`) já contém as seguintes tabelas relevantes para o 
 - `estoque_itens`
 - `fila_impressao`
 - `impressoras`
-- `movimentacoes_...` (tabelas de movimentações)
+- `movimentacoes_...`
 - `pagamentos`
 - `pedido_itens`
 - `pedidos`
@@ -155,19 +163,14 @@ O Supabase (schema `public`) já contém as seguintes tabelas relevantes para o 
 - `setores`
 - `usuarios`
 
-A tabela `public.empresas` já existe e não deve ser recriada.  
-Sempre que novas necessidades surgirem, o padrão será:
+Configuração na API FlowMesa:
 
-- Utilizar `ALTER TABLE` para ajustes em tabelas existentes.
-- Criar novas tabelas apenas quando realmente necessário.
-- Evitar recriação de tabelas já existentes.
+- As variáveis de ambiente do Supabase são carregadas do arquivo `.env` na VPS:
+  - `SUPABASE_URL`
+  - `SUPABASE_SERVICE_ROLE_KEY`
+  - (opcional) `SUPABASE_ANON_KEY` para uso futuro em frontends, se necessário.
 
-Quando o esquema detalhado de cada tabela estiver fixado, será documentado aqui em subtópicos, por exemplo:
-
-- `clientes`  
-  - colunas, tipos, chaves, relações.
-
----
+A `service_role` key é usada exclusivamente na API backend, nunca exposta em código cliente ou repositórios públicos.
 
 ## 6. Serviços/containers do projeto
 
