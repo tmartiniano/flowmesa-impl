@@ -171,36 +171,44 @@ Quando o esquema detalhado de cada tabela estiver fixado, será documentado aqui
 
 ## 6. Serviços/containers do projeto
 
-> Esta seção será atualizada conforme os serviços forem sendo criados na VPS.
+### 6.1 Serviços já existentes na VPS relacionados ao FlowMesa
 
-Planejado para o projeto FlowMesa / Trilha do Sabor:
+Atualmente, na VPS 31.220.94.120, estão em execução:
+
+- `evolution`  
+  - Imagem: `evolution-api:2.3.7`  
+  - Função: gateway WhatsApp (Evolution API).  
+  - Porta host: 8080 → 8080/tcp.  
+  - Endpoint público: `https://api.tlmtecnologia.com/`.
+
+- `evolution_postgres`  
+  - Imagem: `postgres:15`.  
+  - Função: banco interno do Evolution.  
+  - Porta: 5432/tcp (não exposta para o host).
+
+- `evolution_redis`  
+  - Imagem: `redis:7-alpine`.  
+  - Função: cache/filas do Evolution.  
+  - Porta: 6379/tcp (não exposta para o host).
+
+- `n8n`  
+  - Imagem: `n8nio/n8n:latest`.  
+  - Função: orquestração de automações (WhatsApp, pedidos, integrações).  
+  - Porta host: 5678 → 5678/tcp.  
+  - Endpoint público: `https://n8n.tlmtecnologia.com`.
+
+### 6.2 API FlowMesa
+
+A API do FlowMesa está em execução com a seguinte configuração mínima:
 
 - `flowmesa-api`  
-  - Função: backend principal (rotas REST, lógica de negócio, acesso ao Supabase).  
-  - Porta interna: a definir.  
-  - Rede Docker: específica da stack FlowMesa.
-
-- `flowmesa-n8n`  
-  - Função: orquestração de automações (WhatsApp, pedidos, impressão).  
-  - Porta interna: a definir.  
-  - Subdomínio sugerido: `n8n.suadominio.com` ou equivalente.
-
-- `flowmesa-evolution`  
-  - Função: integração com WhatsApp (Evolution API).  
-  - Porta interna: a definir.  
-  - Dependências: acesso aos servidores do WhatsApp, volumes para sessões.
-
-- Outros serviços futuros  
-  - Painel web (frontend).
-  - Serviços auxiliares (ex: servidor de impressão).
-
-Cada serviço terá:
-
-- Nome do container.
-- Porta interna/externa.
-- Rede Docker.
-- Volumes.
-- Variáveis de ambiente importantes.
+  - Função: backend principal do FlowMesa (rotas REST, lógica de negócio, acesso ao Supabase no futuro).  
+  - Imagem: construída localmente a partir de `Dockerfile` na pasta do projeto da API.  
+  - Porta container: 3000.  
+  - Porta host: 3000 → 3000/tcp.  
+  - Endpoint local: `http://127.0.0.1:3000/`.  
+  - Endpoint público (IP): `http://31.220.94.120:3000/`.  
+  - Resposta atual da rota raiz `/`: `{"ok": true, "message": "FlowMesa API up"}`.
 
 ---
 
