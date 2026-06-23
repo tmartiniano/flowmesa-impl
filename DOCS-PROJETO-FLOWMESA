@@ -325,3 +325,245 @@ Arquivo `supabase.js`:
    - Registro de conversas e pedidos no Supabase.
 5. Subir o primeiro painel de operação (listagem de pedidos, controle básico) usando Lovable ou outro front-end conectado à API FlowMesa.
 6. Evoluir a arquitetura para suportar planos Base/Pro/Premium e multi-tenant, mantendo o Trilha do Sabor como piloto.
+
+## 10. Esquema das tabelas principais (Supabase / schema public)
+
+### 10.1 Tabela `public.empresas`
+
+Função: representar cada empresa/loja da plataforma (multiempresa).
+
+Campos:
+
+- `id` (uuid, NOT NULL, default `gen_random_uuid()`): identificador único da empresa.
+- `nome` (text, NOT NULL): nome da empresa (ex.: "Trilha do Sabor").
+- `razao_social` (text, NULL): razão social, quando aplicável.
+- `cnpj` (text, NULL): CNPJ da empresa.
+- `telefone` (text, NULL): telefone de contato.
+- `email` (text, NULL): e-mail de contato.
+- `status` (text, NOT NULL, default `'ativo'`): status da empresa (`ativo`, etc.).
+- `created_at` (timestamptz, NOT NULL, default `now()`): criado em.
+- `updated_at` (timestamptz, NOT NULL, default `now()`): atualizado em.
+
+### 10.2 Tabela `public.clientes`
+
+Função: clientes finais (pessoas que fazem pedidos, especialmente via WhatsApp).
+
+Campos:
+
+- `id` (uuid, NOT NULL, default `gen_random_uuid()`): identificador único do cliente.
+- `empresa_id` (uuid, NOT NULL): empresa à qual o cliente pertence.
+- `nome` (text, NOT NULL): nome do cliente.
+- `telefone` (text, NULL): telefone (pode ser o número do WhatsApp).
+- `email` (text, NULL): e-mail.
+- `documento` (text, NULL): CPF ou outro documento.
+- `status` (text, NOT NULL, default `'ativo'`): status do cliente.
+- `created_at` (timestamptz, NOT NULL, default `now()`): criado em.
+- `updated_at` (timestamptz, NOT NULL, default `now()`): atualizado em.
+
+### 10.3 Tabela `public.conversas`
+
+Função: registro das interações de chat (especialmente WhatsApp), incluindo vínculo com cliente e pedido.
+
+Campos:
+
+- `id` (uuid, NOT NULL, default `gen_random_uuid()`): identificador da conversa.
+- `empresa_id` (uuid, NOT NULL): empresa dona da conversa.
+- `cliente_id` (uuid, NULL): cliente associado, se já identificado.
+- `pedido_id` (uuid, NULL): pedido associado à conversa, se existir.
+- `remotejid` (text, NOT NULL): identificador remoto do canal (ex.: JID do WhatsApp).
+- `pushname` (text, NULL): nome que aparece no WhatsApp.
+- `role` (text, NULL): papel da mensagem (`user`, `assistant`, etc., a definir).
+- `content` (text, NULL): conteúdo da mensagem ou do bloco de conversa.
+- `canal` (text, NOT NULL, default `'whatsapp'`): canal de comunicação.
+- `status_conversa` (text, NOT NULL, default `'nova'`): status da conversa (`nova`, `em_andamento`, `fechada`, etc., a definir).
+- `created_at` (timestamptz, NOT NULL, default `now()`): criado em.
+- `updated_at` (timestamptz, NOT NULL, default `now()`): atualizado em.
+
+### 10.4 Tabela `public.pedidos`
+
+Função: pedidos de venda, vinculados a conversas e clientes.
+
+Campos:
+
+- `id` (uuid, NOT NULL, default `gen_random_uuid()`): identificador do pedido.
+- `empresa_id` (uuid, NOT NULL): empresa dona do pedido.
+- `cliente_id` (uuid, NULL): cliente que fez o pedido.
+- `conversa_id` (uuid, NULL): conversa de origem do pedido.
+- `canal` (text, NOT NULL): canal (`whatsapp`, `balcao`, etc.).
+- `numero_pedido` (bigint, NOT NULL): número sequencial do pedido (por empresa).
+- `status` (text, NOT NULL, default `'rascunho'`): status do pedido (`rascunho`, `em_preparo`, `pronto`, `entregue`, etc.).
+- `subtotal` (numeric, NOT NULL, default `0`): soma dos itens antes de desconto.
+- `desconto` (numeric, NOT NULL, default `0`): valor de desconto aplicado.
+- `total` (numeric, NOT NULL, default `0`): valor total final.
+- `observacao_geral` (text, NULL): observações gerais do pedido.
+- `created_at` (timestamptz, NOT NULL, default `now()`): criado em.
+- `updated_at` (timestamptz, NOT NULL, default `now()`): atualizado em.
+
+### 10.5 Tabela `public.pedido_itens`
+
+Função: itens de cada pedido (produto, quantidade, preço, setor).
+
+Campos:
+
+- `id` (uuid, NOT NULL, default `gen_random_uuid()`): identificador do item.
+- `empresa_id` (uuid, NOT NULL): empresa dona do item.
+- `pedido_id` (uuid, NOT NULL): pedido ao qual o item pertence.
+- `produto_id` (uuid, NOT NULL): produto vendido.
+- `setor_id` (uuid, NULL): setor responsável pela produção (ex.: churrasco).
+- `quantidade` (integer, NOT NULL): quantidade do item.
+- `valor_unitario` (numeric, NOT NULL, default `0`): valor unitário.
+- `subtotal` (numeric, NOT NULL, default `0`): subtotal do item (quantidade × valor_unitario).
+- `observacao` (text, NULL): observação específica do item.
+- `created_at` (timestamptz, NOT NULL, default `now()`): criado em.
+- `updated_at` (timestamptz, NOT NULL, default `now()`): atualizado em.
+
+### 10.6 Tabela `public.produtos`
+
+Função: catálogo de produtos vendidos (ex.: espetos, bebidas).
+
+Campos:
+
+- `id` (uuid, NOT NULL, default `gen_random_uuid()`): identificador do produto.
+- `empresa_id` (uuid, NOT NULL): empresa dona do produto.
+- `categoria_id` (uuid, NOT NULL): categoria à qual o produto pertence.
+- `setor_id` (uuid, NULL): setor que prepara o produto.
+- `nome` (text, NOT NULL): nome do produto.
+- `descricao` (text, NULL): descrição.
+- `preco` (numeric, NOT NULL, default `0`): preço de venda.
+- `codigo_interno` (text, NULL): código interno do produto.
+- `status` (text, NOT NULL, default `'ativo'`): status (`ativo`, etc.).
+- `imprime_senha` (boolean, NOT NULL, default `false`): indica se gera senha de retirada.
+- `created_at` (timestamptz, NOT NULL, default `now()`): criado em.
+- `updated_at` (timestamptz, NOT NULL, default `now()`): atualizado em.
+
+### 10.7 Tabela `public.senhas`
+
+Função: controle de senhas de retirada associadas ao pedido.
+
+Campos:
+
+- `id` (uuid, NOT NULL, default `gen_random_uuid()`): identificador da senha.
+- `empresa_id` (uuid, NOT NULL): empresa.
+- `pedido_id` (uuid, NOT NULL): pedido vinculado.
+- `numero` (integer, NOT NULL): número da senha (sequencial por empresa, a definir).
+- `status` (text, NOT NULL, default `'emitida'`): status da senha (`emitida`, `chamada`, `atendida`, etc.).
+- `emitida_em` (timestamptz, NULL): momento de emissão.
+- `chamada_em` (timestamptz, NULL): momento em que foi chamada.
+- `atendida_em` (timestamptz, NULL): momento em que foi atendida.
+- `created_at` (timestamptz, NOT NULL, default `now()`): criado em.
+- `updated_at` (timestamptz, NOT NULL, default `now()`): atualizado em.
+
+### 10.8 Tabela `public.setores`
+
+Função: setores da operação (ex.: churrasqueira, bebidas).
+
+Campos:
+
+- `id` (uuid, NOT NULL, default `gen_random_uuid()`): identificador do setor.
+- `empresa_id` (uuid, NOT NULL): empresa.
+- `nome` (text, NOT NULL): nome do setor.
+- `ordem` (integer, NOT NULL, default `0`): ordem de exibição/organização.
+- `status` (text, NOT NULL, default `'ativo'`): status.
+- `created_at` (timestamptz, NOT NULL, default `now()`): criado em.
+- `updated_at` (timestamptz, NOT NULL, default `now()`): atualizado em.
+
+### 10.9 Tabela `public.caixas`
+
+Função: controle de abertura/fechamento de caixa por usuário e empresa.
+
+Campos:
+
+- `id` (uuid, NOT NULL, default `gen_random_uuid()`): identificador do caixa.
+- `empresa_id` (uuid, NOT NULL): empresa.
+- `usuario_id` (uuid, NOT NULL): usuário responsável.
+- `valor_abertura` (numeric, NOT NULL, default `0`): valor inicial.
+- `valor_fechamento` (numeric, NULL): valor declarado ao fechar.
+- `status` (text, NOT NULL, default `'aberto'`): status (`aberto`, `fechado`, etc.).
+- `diferenca` (numeric, NOT NULL, default `0`): diferença entre esperado e declarado.
+- `aberto_em` (timestamptz, NOT NULL, default `now()`): abertura.
+- `fechado_em` (timestamptz, NULL): fechamento.
+- `created_at` (timestamptz, NOT NULL, default `now()`): criado em.
+- `updated_at` (timestamptz, NOT NULL, default `now()`): atualizado em.
+
+### 10.10 Tabela `public.pagamentos`
+
+Função: pagamentos vinculados a pedidos e caixas.
+
+Campos:
+
+- `id` (uuid, NOT NULL, default `gen_random_uuid()`): identificador do pagamento.
+- `empresa_id` (uuid, NOT NULL): empresa.
+- `pedido_id` (uuid, NOT NULL): pedido pago.
+- `caixa_id` (uuid, NULL): caixa associado.
+- `forma_pagamento` (text, NOT NULL): meio de pagamento (`pix`, `credito`, `debito`, etc.).
+- `valor` (numeric, NOT NULL, default `0`): valor pago.
+- `status` (text, NOT NULL, default `'pendente'`): status (`pendente`, `confirmado`, etc.).
+- `created_at` (timestamptz, NOT NULL, default `now()`): criado em.
+- `updated_at` (timestamptz, NOT NULL, default `now()`): atualizado em.
+
+### 10.11 Tabela `public.fila_impressao`
+
+Função: fila de documentos a imprimir (comandas, senhas, etc.).
+
+Campos:
+
+- `id` (uuid, NOT NULL, default `gen_random_uuid()`): identificador da fila.
+- `empresa_id` (uuid, NOT NULL): empresa.
+- `pedido_id` (uuid, NOT NULL): pedido associado.
+- `pedido_item_id` (uuid, NULL): item específico, se aplicável.
+- `setor_id` (uuid, NULL): setor, se aplicável.
+- `impressora_id` (uuid, NULL): impressora alvo.
+- `tipo_documento` (text, NOT NULL): tipo (`comanda`, `senha`, etc.).
+- `payload` (jsonb, NOT NULL, default `'{}'`): conteúdo a ser impresso.
+- `status` (text, NOT NULL, default `'pendente'`): status na fila (`pendente`, `processando`, `impresso`, `erro` etc.).
+- `tentativas` (integer, NOT NULL, default `0`): número de tentativas de impressão.
+- `erro` (text, NULL): mensagem de erro última.
+- `created_at` (timestamptz, NOT NULL, default `now()`): criado em.
+- `updated_at` (timestamptz, NOT NULL, default `now()`): atualizado em.
+
+### 10.12 Tabela `public.impressoras`
+
+Função: cadastro de impressoras disponíveis para cada empresa/setor.
+
+Campos:
+
+- `id` (uuid, NOT NULL, default `gen_random_uuid()`): identificador da impressora.
+- `empresa_id` (uuid, NOT NULL): empresa.
+- `setor_id` (uuid, NULL): setor ao qual a impressora está vinculada.
+- `nome` (text, NOT NULL): nome amigável da impressora.
+- `tipo` (text, NOT NULL): tipo (ex.: `esc_pos`, `tcp`, etc., a definir).
+- `ip` (text, NULL): IP da impressora.
+- `porta` (integer, NULL): porta de comunicação.
+- `status` (text, NOT NULL, default `'ativa'`): status.
+- `created_at` (timestamptz, NOT NULL, default `now()`): criado em.
+- `updated_at` (timestamptz, NOT NULL, default `now()`): atualizado em.
+
+### 10.13 Tabela `public.estoque_itens`
+
+Função: itens de estoque (insumos, produtos para baixa).
+
+Campos:
+
+- `id` (uuid, NOT NULL, default `gen_random_uuid()`): identificador do item de estoque.
+- `empresa_id` (uuid, NOT NULL): empresa.
+- `nome` (text, NOT NULL): nome do item.
+- `unidade` (text, NOT NULL, default `'un'`): unidade de medida.
+- `saldo_atual` (numeric, NOT NULL, default `0`): saldo atual.
+- `saldo_minimo` (numeric, NOT NULL, default `0`): saldo mínimo desejado.
+- `status` (text, NOT NULL, default `'ativo'`): status.
+- `created_at` (timestamptz, NOT NULL, default `now()`): criado em.
+- `updated_at` (timestamptz, NOT NULL, default `now()`): atualizado em.
+
+### 10.14 Tabela `public.usuarios`
+
+Função: usuários do sistema (operadores de caixa, atendentes, administradores).
+
+Campos:
+
+- `id` (uuid, NOT NULL): identificador do usuário (sem default, provavelmente gerado pela autenticação).
+- `empresa_id` (uuid, NOT NULL): empresa à qual o usuário pertence.
+- `nome` (text, NOT NULL): nome do usuário.
+- `perfil` (text, NOT NULL): perfil (`admin`, `atendente`, etc., a definir).
+- `status` (text, NOT NULL, default `'ativo'`): status.
+- `created_at` (timestamptz, NOT NULL, default `now()`): criado em.
+- `updated_at` (timestamptz, NOT NULL, default `now()`): atualizado em.
